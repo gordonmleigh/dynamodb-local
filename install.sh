@@ -5,6 +5,7 @@ install_path="$HOME/dynamodb-local"
 bin_path="$install_path/bin"
 
 tarball_name="dynamodb_local_latest.tar.gz"
+install_script_source="https://raw.githubusercontent.com/gordonmleigh/dynamodb-local/refs/heads/main/install.sh"
 
 app_identifier="local.dynamodb"
 source_url="https://d1ni2b6xgvw0s0.cloudfront.net/v2.x/$tarball_name"
@@ -19,11 +20,7 @@ wrapper_path="$install_path/dynamodb-local"
 
 bootstrap() {
   mkdir -p "$install_path"
-
-  if [ "$(realpath "$0")" != "$install_script_path" ]; then
-    cp "$0" "$install_path/install.sh"
-  fi
-
+  curl -sL "$install_script_source" -o "$install_script_path"
   update
   install_wrapper
   install_service
@@ -39,10 +36,11 @@ EOF
 }
 
 install_service() {
-  echo -e "\ndynamodb-local can run as a shared instance, where all connections share the same data file; otherwise, there will be a separate file per region/access key."
-  echo -e "\nFor example, connection with region 'us-east-1' and AWS_ACCESS_KEY_ID 'foo' will use the data file 'foo_us-east-1.db'.\n"
+  use_shared="Y"
 
-  read -p "Use shared dynamodb-local instance? (Y/n) " use_shared
+  if [ -t 0 ]; then
+    read -p "Use shared dynamodb-local instance? (Y/n) " use_shared
+  fi
   
   if [ "$use_shared" != "n" ]; then 
     extra_service_args="<string>-sharedDb</string>"
@@ -76,8 +74,8 @@ EOF
 
 uninstall_service() {
   echo "Removing service $app_identifier..."
-  launchctl bootout "gui/$UID/$app_identifier"
-  rm "$plist_path"
+  launchctl bootout "gui/$UID/$app_identifier" || true
+  rm "$plist_path" || true
 }
 
 update() {
@@ -97,7 +95,7 @@ update() {
 
 if [ "$1" == "uninstall" ]; then
   uninstall_service
-elif [ "$(realpath "$0")" == "$install_script_path" ]; then
+elif [ -f "$install_script_path" ]; then
   # we are already bootstrapped
   update
   uninstall_service
