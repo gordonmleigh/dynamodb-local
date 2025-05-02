@@ -20,9 +20,10 @@ wrapper_path="$install_path/dynamodb-local"
 
 bootstrap() {
   mkdir -p "$install_path"
-  curl -sL "$install_script_source" -o "$install_script_path"
+  curl -sL "$install_script_source" -o "$install_script_path" -z "$install_script_path"
   update
   install_wrapper
+  uninstall_service
   install_service
 }
 
@@ -30,7 +31,7 @@ install_wrapper() {
   cat > "$wrapper_path" <<EOF
 #!/bin/bash
 cd "$install_path" # so that default data folder is the current path
-java "-Djava.library.path=$bin_path/DynamoDBLocal_lib" -jar "$bin_path/DynamoDBLocal.jar" "$@"
+java "-Djava.library.path=$bin_path/DynamoDBLocal_lib" -jar "$bin_path/DynamoDBLocal.jar" "\$@"
 EOF
   chmod +x "$wrapper_path"
 }
@@ -44,6 +45,9 @@ install_service() {
   
   if [ "$use_shared" != "n" ]; then 
     extra_service_args="<string>-sharedDb</string>"
+    echo "Using shared database file at $install_path/shared-local-instance.db"
+  else
+    echo "Using separate data files at $install_path/\${AWS_ACCESS_KEY_ID}_\${AWS_REGION}.db"
   fi
 
   echo "Saving plist to $plist_path..."
@@ -95,11 +99,6 @@ update() {
 
 if [ "$1" == "uninstall" ]; then
   uninstall_service
-elif [ -f "$install_script_path" ]; then
-  # we are already bootstrapped
-  update
-  uninstall_service
-  install_service
 else
   echo "Installing dynamodb-local to $install_path"
   bootstrap
