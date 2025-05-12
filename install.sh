@@ -67,6 +67,8 @@ install_service() {
     </array>
     <key>KeepAlive</key>
     <true/>
+    <key>ProcessType</key>
+    <string>Interactive</string>
   </dict>
 </plist>
 EOF
